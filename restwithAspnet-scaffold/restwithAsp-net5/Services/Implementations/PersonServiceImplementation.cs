@@ -1,4 +1,7 @@
-﻿using restwithAsp_net5.Model;
+﻿using Microsoft.EntityFrameworkCore.Internal;
+using Microsoft.EntityFrameworkCore.Query.SqlExpressions;
+using restwithAsp_net5.Model;
+using restwithAsp_net5.Model.Context;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -10,60 +13,93 @@ namespace restwithAsp_net5.Services.Implementations
     public class PersonServiceImplementation : IPersonService
     {
         private volatile int count;
+        private MysqlContext _mysqlContext;
+
+        public PersonServiceImplementation(MysqlContext mysqlContext)
+        {
+            _mysqlContext = mysqlContext;
+        }
         public Person Create(Person person)
         {
+            try
+            {
+                _mysqlContext.Add(person);
+                _mysqlContext.SaveChanges();
+
+            }
+            catch (Exception e)
+            {
+
+                throw e;
+            }
+            
             return person;
         }
 
         public void Delete(long id)
         {
-            
+            var result = _mysqlContext.Persons.SingleOrDefault(p => p.Id.Equals(id));
+            if (result != null)
+            {
+                try
+                {
+                    _mysqlContext.Persons.Remove(result);
+                    _mysqlContext.SaveChanges();
+
+                }
+                catch (Exception e)
+                {
+
+                    throw e;
+                }
+
+            }
+
         }
 
         public List<Person> findAll()
         {
-            List<Person> persons = new List<Person>();
-            for(int i = 0; i < 9; i++)
-            {
-                Person person = MockPerson(i);
-                persons.Add(person);
-            }
-            return persons;
+            return _mysqlContext.Persons.ToList();
         }
 
 
         public Person findById(long id)
         {
-            return new Person
-            {
-                Id=this.IncrementAndGet(),
-                Adress = "Montes Claros",
-                Gender = "Male",
-                FirstName = "Farley",
-                LastName = "Melo"
-            };
+            return _mysqlContext.Persons.SingleOrDefault(p => p.Id.Equals(id));
         }
 
         public Person Update(Person person)
         {
+            if (!Exists(person.Id))
+            {
+                return new Person();
+            }
+           var result= _mysqlContext.Persons.SingleOrDefault(p => p.Id.Equals(person.Id));
+            if (result != null)
+            {
+                try
+                {
+                    _mysqlContext.Entry(result).CurrentValues.SetValues(person);
+                    _mysqlContext.SaveChanges();
+
+                }
+                catch (Exception e)
+                {
+
+                    throw e;
+                }
+
+            }
+           
+
             return person;
         }
 
-        private Person MockPerson(int i)
+        private bool Exists(long id)
         {
-            return new Person
-            {
-                Id=IncrementAndGet(),
-                Adress = "Person Adress"+i,
-                Gender = "Person Gender"+i,
-                FirstName = "Person Name"+i,
-                LastName = "Person Last Name"+i
-            };
+            return _mysqlContext.Persons.Any(p => p.Id.Equals(id));
         }
 
-        private long IncrementAndGet()
-        {
-            return Interlocked.Increment(ref count);
-        }
+       
     }
 }
